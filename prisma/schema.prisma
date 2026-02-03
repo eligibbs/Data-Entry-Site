@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Member {
+  id          Int          @id @default(autoincrement())
+  name        String
+  phoneNumber String
+  dateOfBirth String
+  attendances Attendance[]
+}
+
+model Attendance {
+  id        Int    @id @default(autoincrement())
+  date      String
+  activity  String
+  memberId  Int
+  member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}

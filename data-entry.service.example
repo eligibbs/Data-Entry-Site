@@ -1,0 +1,24 @@
+[Unit]
+Description=Data Entry
+Documentation=https://github.com/eligibbs/Recovery-Cafe-Data-Entry-Site
+# Start after the network is available
+After=network.target
+
+[Service]
+# Run as root (as requested)
+User=root
+Group=root
+
+# The directory containing your package.json
+WorkingDirectory=/root/Data-Entry-Site
+
+# The command to start the app.
+ExecStart=/usr/bin/npm start
+
+# Restart automatically if the app crashes
+Restart=on-failure
+RestartSec=10
+
+[Install]
+# Start this service when the system boots into multi-user mode
+WantedBy=multi-user.target
