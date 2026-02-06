@@ -46,6 +46,41 @@ async function init() {
 
 init()
 
+// Helper to normalize date strings to YYYY-MM-DD
+const normalizeDate = (d: string) => {
+  if (!d) return ''
+  const trimmed = d.trim()
+  // If already YYYY-MM-DD, return it to avoid timezone shifts
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+  
+  const date = new Date(trimmed)
+  if (isNaN(date.getTime())) return trimmed
+  return date.toISOString().split('T')[0]
+}
+
+// Helper to check for duplicate members
+async function findDuplicateMember(name: string, dateOfBirth: string) {
+  const inputDob = normalizeDate(dateOfBirth)
+  const normalizedInputName = name.trim().toLowerCase().replace(/\s+/g, ' ')
+
+  // Fetch potential matches by DOB (normalized or raw) OR Name (exact)
+  const potentialMatches = await prisma.member.findMany({
+    where: {
+      OR: [
+        { dateOfBirth: inputDob },
+        { dateOfBirth: dateOfBirth.trim() },
+        { name: name.trim() }
+      ]
+    }
+  })
+
+  return potentialMatches.find(m => {
+    const dbName = m.name.trim().toLowerCase().replace(/\s+/g, ' ')
+    const dbDob = normalizeDate(m.dateOfBirth)
+    return dbName === normalizedInputName && dbDob === inputDob
+  })
+}
+
 // Login endpoint
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body
@@ -94,17 +129,8 @@ app.post('/api/register-member', async (req, res) => {
 
     const { name, phoneNumber, dateOfBirth } = req.body
 
-    // Fetch all members with the same DOB (likely a small subset)
-    const potentialMatches = await prisma.member.findMany({
-      where: { dateOfBirth }
-    })
-
-    const normalizedInputName = name.trim().toLowerCase().replace(/\s+/g, ' ')
-    const isDuplicate = potentialMatches.some(m => 
-      m.name.trim().toLowerCase().replace(/\s+/g, ' ') === normalizedInputName
-    )
-
-    if (isDuplicate) {
+    const duplicate = await findDuplicateMember(name, dateOfBirth)
+    if (duplicate) {
       return res.status(409).json({ 
         error: 'You are already registered! If you need to update your information, let us know.' 
       })
@@ -114,7 +140,7 @@ app.post('/api/register-member', async (req, res) => {
       data: {
         name: name.trim(),
         phoneNumber,
-        dateOfBirth,
+        dateOfBirth: normalizeDate(dateOfBirth),
       },
     })
     res.json(member)
@@ -164,15 +190,22 @@ app.get('/api/members', requireAuth, async (req, res) => {
   }
 })
 
-// Create a new member
+// Create a new member (Quick Add)
 app.post('/api/members', requireAuth, async (req, res) => {
   const { name, phoneNumber, dateOfBirth } = req.body
   try {
+    const duplicate = await findDuplicateMember(name, dateOfBirth)
+    if (duplicate) {
+      return res.status(409).json({ 
+        error: 'You are already registered! If you need to update your information, let us know.'
+      })
+    }
+
     const member = await prisma.member.create({
       data: {
-        name,
+        name: name.trim(),
         phoneNumber,
-        dateOfBirth,
+        dateOfBirth: normalizeDate(dateOfBirth),
       },
     })
     res.json(member)
@@ -187,12 +220,14 @@ app.put('/api/members/:id', requireAuth, async (req, res) => {
   const { id } = req.params
   const { name, phoneNumber, dateOfBirth } = req.body
   try {
+    // Note: We might want to check for duplicates here too, but excluding the current ID.
+    // For now, keeping it simple as requested.
     const member = await prisma.member.update({
       where: { id: Number(id) },
       data: {
         name,
         phoneNumber,
-        dateOfBirth,
+        dateOfBirth: dateOfBirth ? normalizeDate(dateOfBirth) : undefined,
       },
     })
     res.json(member)

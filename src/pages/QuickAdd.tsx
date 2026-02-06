@@ -31,7 +31,8 @@ export default function QuickAdd() {
         setPhone('')
         setDob('')
       } else {
-        alert('Failed to add member')
+        const data = await response.json()
+        alert(data.error || 'Failed to add member')
       }
     } catch (error) {
       console.error('Error adding member:', error)
