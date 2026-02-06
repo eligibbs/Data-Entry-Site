@@ -9,8 +9,8 @@ const port = 3000
 app.use(cors())
 app.use(express.json())
 
-// Initialize default admin user
-async function initAdmin() {
+// Initialize default admin user and config
+async function init() {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin'
   const adminPassword = process.env.ADMIN_PASSWORD || 'password'
 
@@ -29,12 +29,22 @@ async function initAdmin() {
       })
       console.log('Default admin user created')
     }
+
+    // Initialize self-registration config if not exists
+    const selfRegConfig = await prisma.systemConfig.findUnique({
+      where: { key: 'selfRegistrationEnabled' }
+    })
+    if (!selfRegConfig) {
+      await prisma.systemConfig.create({
+        data: { key: 'selfRegistrationEnabled', value: 'false' }
+      })
+    }
   } catch (error) {
-    console.error('Error initializing admin:', error)
+    console.error('Error initializing system:', error)
   }
 }
 
-initAdmin()
+init()
 
 // Login endpoint
 app.post('/api/login', async (req, res) => {
@@ -70,6 +80,59 @@ const requireAuth = (req: any, res: any, next: any) => {
   // but normally you'd check req.headers.authorization
   next()
 }
+
+// Public endpoint for self-registration
+app.post('/api/register-member', async (req, res) => {
+  try {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'selfRegistrationEnabled' }
+    })
+    
+    if (!config || config.value !== 'true') {
+      return res.status(403).json({ error: 'Self-registration is currently disabled' })
+    }
+
+    const { name, phoneNumber, dateOfBirth } = req.body
+    const member = await prisma.member.create({
+      data: {
+        name,
+        phoneNumber,
+        dateOfBirth,
+      },
+    })
+    res.json(member)
+  } catch (error) {
+    console.error('Error registering member:', error)
+    res.status(500).json({ error: 'Error registering member' })
+  }
+})
+
+// Get system config (publicly readable to check if registration is open)
+app.get('/api/config/self-registration', async (req, res) => {
+  try {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'selfRegistrationEnabled' }
+    })
+    res.json({ enabled: config?.value === 'true' })
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching config' })
+  }
+})
+
+// Update system config (Admin only)
+app.put('/api/config/self-registration', requireAuth, async (req, res) => {
+  const { enabled } = req.body
+  try {
+    const config = await prisma.systemConfig.upsert({
+      where: { key: 'selfRegistrationEnabled' },
+      update: { value: String(enabled) },
+      create: { key: 'selfRegistrationEnabled', value: String(enabled) }
+    })
+    res.json({ enabled: config.value === 'true' })
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating config' })
+  }
+})
 
 // Get all members with attendance
 app.get('/api/members', requireAuth, async (req, res) => {

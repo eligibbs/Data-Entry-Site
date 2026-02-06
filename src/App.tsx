@@ -4,6 +4,7 @@ import QuickAdd from './pages/QuickAdd'
 import Profile from './pages/Profile'
 import Login from './pages/Login'
 import Admin from './pages/Admin'
+import Register from './pages/Register'
 import './App.css'
 
 function App() {
@@ -29,11 +30,13 @@ function App() {
     navigate('/login')
   }
 
+  // Public routes wrapper
   if (!user) {
     return (
       <div className="app-container">
         <Routes>
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/register" element={<Register />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
@@ -56,6 +59,8 @@ function App() {
         <Route path="/" element={<QuickAdd />} />
         <Route path="/profile" element={<Profile />} />
         {user.role === 'admin' && <Route path="/admin" element={<Admin />} />}
+        {/* Allow logged-in users to see the register page too if they want, or redirect */}
+        <Route path="/register" element={<Register />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
