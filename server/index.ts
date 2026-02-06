@@ -94,19 +94,6 @@ app.post('/api/register-member', async (req, res) => {
 
     const { name, phoneNumber, dateOfBirth } = req.body
 
-    // Check for existing member (case-insensitive name + exact DOB)
-    const existingMember = await prisma.member.findFirst({
-      where: {
-        name: {
-          equals: name.trim(), // Prisma SQLite doesn't support mode: 'insensitive' easily, so we do basic check
-          // For better case insensitivity in SQLite with Prisma, we often have to fetch and filter in JS or use raw query
-          // But let's try a simpler approach: normalize spaces and check
-        },
-        dateOfBirth: dateOfBirth
-      }
-    })
-
-    // Since SQLite case-insensitivity is tricky with Prisma, let's fetch potential matches and filter in JS
     // Fetch all members with the same DOB (likely a small subset)
     const potentialMatches = await prisma.member.findMany({
       where: { dateOfBirth }
