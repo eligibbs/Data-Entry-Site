@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:3000`;
+const API_BASE_URL = '';
 
 export default function QuickAdd() {
   const [name, setName] = useState('')
