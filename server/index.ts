@@ -127,7 +127,7 @@ app.post('/api/register-member', async (req, res) => {
       return res.status(403).json({ error: 'Self-registration is currently disabled' })
     }
 
-    const { name, phoneNumber, dateOfBirth } = req.body
+    const { name, phoneNumber, dateOfBirth, county, inService } = req.body
 
     const duplicate = await findDuplicateMember(name, dateOfBirth)
     if (duplicate) {
@@ -141,6 +141,8 @@ app.post('/api/register-member', async (req, res) => {
         name: name.trim(),
         phoneNumber,
         dateOfBirth: normalizeDate(dateOfBirth),
+        county,
+        inService
       },
     })
     res.json(member)
@@ -192,7 +194,7 @@ app.get('/api/members', requireAuth, async (req, res) => {
 
 // Create a new member (Quick Add)
 app.post('/api/members', requireAuth, async (req, res) => {
-  const { name, phoneNumber, dateOfBirth } = req.body
+  const { name, phoneNumber, dateOfBirth, county, inService } = req.body
   try {
     const duplicate = await findDuplicateMember(name, dateOfBirth)
     if (duplicate) {
@@ -206,6 +208,8 @@ app.post('/api/members', requireAuth, async (req, res) => {
         name: name.trim(),
         phoneNumber,
         dateOfBirth: normalizeDate(dateOfBirth),
+        county,
+        inService
       },
     })
     res.json(member)
@@ -218,7 +222,7 @@ app.post('/api/members', requireAuth, async (req, res) => {
 // Update a member
 app.put('/api/members/:id', requireAuth, async (req, res) => {
   const { id } = req.params
-  const { name, phoneNumber, dateOfBirth } = req.body
+  const { name, phoneNumber, dateOfBirth, county, inService } = req.body
   try {
     // Note: We might want to check for duplicates here too, but excluding the current ID.
     // For now, keeping it simple as requested.
@@ -228,6 +232,8 @@ app.put('/api/members/:id', requireAuth, async (req, res) => {
         name,
         phoneNumber,
         dateOfBirth: dateOfBirth ? normalizeDate(dateOfBirth) : undefined,
+        county,
+        inService
       },
     })
     res.json(member)
@@ -339,6 +345,74 @@ app.delete('/api/users/:id', requireAuth, async (req, res) => {
     res.json({ message: 'User deleted' })
   } catch (error) {
     res.status(500).json({ error: 'Error deleting user' })
+  }
+})
+
+// Get company name and counties
+app.get('/api/config/company-name', async (req, res) => {
+  try {
+    const companyName = process.env.COMPANY_NAME || ''
+    const subsidiaryName = process.env.SUBSIDIARY_NAME || ''
+    const counties = (process.env.COUNTIES || '').split(',').map(c => c.trim()).filter(c => c)
+    const activities = (process.env.ACTIVITIES || '').split(',').map(c => c.trim()).filter(c => c)
+    res.json({ companyName, subsidiaryName, counties, activities })
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching company name' })
+  }
+})
+
+// Reports Endpoints
+
+// 1. Member list (with demographics)
+// Already covered by GET /api/members, but we might want a specific one for reports if needed.
+// For now, we can reuse GET /api/members on the frontend.
+
+// 2. Attendance Report (by date and activity)
+app.get('/api/reports/attendance', requireAuth, async (req, res) => {
+  const { date, activity } = req.query
+  if (!date || !activity) {
+    return res.status(400).json({ error: 'Date and activity are required' })
+  }
+
+  try {
+    const attendances = await prisma.attendance.findMany({
+      where: {
+        date: String(date),
+        activity: String(activity)
+      },
+      include: {
+        member: true
+      }
+    })
+    res.json(attendances)
+  } catch (error) {
+    console.error('Error fetching attendance report:', error)
+    res.status(500).json({ error: 'Error fetching attendance report' })
+  }
+})
+
+// 3. Members per County
+app.get('/api/reports/county-stats', requireAuth, async (req, res) => {
+  try {
+    const members = await prisma.member.findMany()
+    const stats: Record<string, number> = {}
+    
+    // Initialize with configured counties if we want to show 0s, 
+    // but for now let's just count what's in the DB.
+    // Actually, user asked for a dropdown of counties, so maybe they want to filter by county?
+    // "Number of members per County" usually means a summary.
+    
+    members.forEach(m => {
+      const c = m.county || 'Unknown'
+      stats[c] = (stats[c] || 0) + 1
+    })
+    
+    // Convert to array for easier frontend handling
+    const result = Object.entries(stats).map(([county, count]) => ({ county, count }))
+    res.json(result)
+  } catch (error) {
+    console.error('Error fetching county stats:', error)
+    res.status(500).json({ error: 'Error fetching county stats' })
   }
 })
 

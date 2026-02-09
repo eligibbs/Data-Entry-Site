@@ -103,6 +103,14 @@ button.danger:hover {
   background-color: #b71c1c;
 }
 
+button:disabled,
+button:disabled:hover {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  transform: none;
+}
+
 input, select {
   padding: 0.6em;
   border-radius: 6px;

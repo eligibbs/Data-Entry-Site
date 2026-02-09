@@ -5,6 +5,8 @@ interface Member {
   name: string
   phoneNumber: string
   dateOfBirth: string
+  county?: string
+  inService?: boolean
   attendances: Attendance[]
 }
 
@@ -21,16 +23,42 @@ export default function Profile() {
   const [members, setMembers] = useState<Member[]>([])
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null)
   const [attendanceDate, setAttendanceDate] = useState('')
-  const [activity, setActivity] = useState('Wednesday Circle')
+  const [activity, setActivity] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [counties, setCounties] = useState<string[]>([])
+  const [activities, setActivities] = useState<string[]>([])
   
   // Edit state
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editDob, setEditDob] = useState('')
+  const [editCounty, setEditCounty] = useState('')
+  const [editInService, setEditInService] = useState(false)
 
   useEffect(() => {
     fetchMembers()
+    fetch(`${API_BASE_URL}/api/config/company-name`)
+      .then(res => res.json())
+      .then(data => {
+        setCompanyName(data.companyName)
+        setCounties(data.counties || [])
+        const fetchedActivities = data.activities || []
+        setActivities(fetchedActivities)
+        if (fetchedActivities.length > 0) {
+          setActivity(fetchedActivities[0])
+        } else {
+          setActivity('Default Activity') // Default fallback
+        }
+      })
+      .catch(console.error)
+    
+    // Set default attendance date to today in local time
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    setAttendanceDate(`${year}-${month}-${day}`)
   }, [])
 
   useEffect(() => {
@@ -40,6 +68,8 @@ export default function Profile() {
         setEditName(member.name)
         setEditPhone(member.phoneNumber)
         setEditDob(member.dateOfBirth)
+        setEditCounty(member.county || '')
+        setEditInService(member.inService || false)
         setIsEditing(false)
       }
     }
@@ -67,6 +97,8 @@ export default function Profile() {
           name: editName,
           phoneNumber: editPhone,
           dateOfBirth: editDob,
+          county: editCounty,
+          inService: editInService
         }),
       })
       if (response.ok) {
@@ -192,6 +224,33 @@ export default function Profile() {
                   <label style={{ fontWeight: 500, color: 'var(--primary-color)' }}>DOB</label>
                   <input type="date" value={editDob} onChange={e => setEditDob(e.target.value)} required />
                 </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left' }}>
+                  <label style={{ fontWeight: 500, color: 'var(--primary-color)' }}>County</label>
+                  {counties.length > 0 ? (
+                    <select
+                      value={editCounty}
+                      onChange={(e) => setEditCounty(e.target.value)}
+                    >
+                      <option value="">Select County</option>
+                      {counties.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input type="text" value={editCounty} onChange={e => setEditCounty(e.target.value)} />
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: 'left' }}>
+                  <input 
+                    id="editInService"
+                    type="checkbox" 
+                    checked={editInService} 
+                    onChange={e => setEditInService(e.target.checked)} 
+                  />
+                  <label htmlFor="editInService" style={{ fontWeight: 500, color: 'var(--primary-color)' }}>
+                    Are you accepting service from {companyName || 'company'}?
+                  </label>
+                </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                   <button type="submit" style={{ flex: 1 }}>Save Changes</button>
                   <button type="button" className="danger" onClick={handleDeleteMember} style={{ flex: 1 }}>
@@ -213,6 +272,14 @@ export default function Profile() {
                   <span style={{ display: 'block', fontSize: '0.85rem', color: '#666' }}>Date of Birth</span>
                   <span style={{ fontSize: '1.1rem', fontWeight: 500 }}>{selectedMember.dateOfBirth}</span>
                 </div>
+                <div>
+                  <span style={{ display: 'block', fontSize: '0.85rem', color: '#666' }}>County</span>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 500 }}>{selectedMember.county || 'N/A'}</span>
+                </div>
+                <div>
+                  <span style={{ display: 'block', fontSize: '0.85rem', color: '#666' }}>Accepting service from {companyName || 'Company'} at time of registration</span>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 500 }}>{selectedMember.inService ? 'Yes' : 'No'}</span>
+                </div>
               </div>
             )}
           </div>
@@ -227,8 +294,16 @@ export default function Profile() {
                 required
               />
               <select value={activity} onChange={(e) => setActivity(e.target.value)}>
-                <option value="Wednesday Circle">Wednesday Circle</option>
-                <option value="Thursday Circle">Thursday Circle</option>
+                {activities.length > 0 ? (
+                  activities.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Wednesday Circle">Wednesday Circle</option>
+                    <option value="Thursday Circle">Thursday Circle</option>
+                  </>
+                )}
               </select>
               <button type="submit">Record Attendance</button>
             </form>

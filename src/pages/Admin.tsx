@@ -14,9 +14,14 @@ export default function Admin() {
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newRole, setNewRole] = useState('user')
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
 
   useEffect(() => {
     fetchUsers()
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser))
+    }
   }, [])
 
   const fetchUsers = async () => {
@@ -118,6 +123,7 @@ export default function Admin() {
                   <select 
                     value={user.role} 
                     onChange={e => handleUpdateUser(user.id, { role: e.target.value })}
+                    disabled={currentUser?.id === user.id}
                   >
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
@@ -128,6 +134,7 @@ export default function Admin() {
                     className={user.active ? '' : 'secondary'}
                     onClick={() => handleUpdateUser(user.id, { active: !user.active })}
                     style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
+                    disabled={currentUser?.id === user.id}
                   >
                     {user.active ? 'Active' : 'Disabled'}
                   </button>
@@ -137,6 +144,7 @@ export default function Admin() {
                     className="danger" 
                     onClick={() => handleDeleteUser(user.id)}
                     style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
+                    disabled={currentUser?.id === user.id}
                   >
                     Delete
                   </button>

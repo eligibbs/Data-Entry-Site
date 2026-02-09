@@ -6,13 +6,27 @@ export default function QuickAdd() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [dob, setDob] = useState('')
+  const [county, setCounty] = useState('')
+  const [inService, setInService] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [selfRegEnabled, setSelfRegEnabled] = useState(false)
+  const [companyName, setCompanyName] = useState('')
+  const [subsidiaryName, setSubsidiaryName] = useState('')
+  const [counties, setCounties] = useState<string[]>([])
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/config/self-registration`)
       .then(res => res.json())
       .then(data => setSelfRegEnabled(data.enabled))
+      .catch(console.error)
+
+    fetch(`${API_BASE_URL}/api/config/company-name`)
+      .then(res => res.json())
+      .then(data => {
+        setCompanyName(data.companyName)
+        setSubsidiaryName(data.subsidiaryName)
+        setCounties(data.counties || [])
+      })
       .catch(console.error)
   }, [])
 
@@ -23,13 +37,15 @@ export default function QuickAdd() {
       const response = await fetch(`${API_BASE_URL}/api/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phoneNumber: phone, dateOfBirth: dob }),
+        body: JSON.stringify({ name, phoneNumber: phone, dateOfBirth: dob, county, inService }),
       })
       if (response.ok) {
         alert('Member added successfully!')
         setName('')
         setPhone('')
         setDob('')
+        setCounty('')
+        setInService(false)
       } else {
         const data = await response.json()
         alert(data.error || 'Failed to add member')
@@ -57,6 +73,8 @@ export default function QuickAdd() {
       console.error('Error toggling self-registration:', error)
     }
   }
+
+  const displayCompanyName = subsidiaryName || companyName
 
   return (
     <div className="card" style={{ maxWidth: '500px', margin: '0 auto' }}>
@@ -109,6 +127,40 @@ export default function QuickAdd() {
             onChange={(e) => setDob(e.target.value)}
             required
           />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left' }}>
+          <label htmlFor="county" style={{ fontWeight: 500, color: 'var(--primary-color)' }}>County of Residence</label>
+          {counties.length > 0 ? (
+            <select
+              id="county"
+              value={county}
+              onChange={(e) => setCounty(e.target.value)}
+            >
+              <option value="">Select County</option>
+              {counties.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="county"
+              type="text"
+              placeholder="e.g. Orange County"
+              value={county}
+              onChange={(e) => setCounty(e.target.value)}
+            />
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: 'left' }}>
+          <input
+            id="inService"
+            type="checkbox"
+            checked={inService}
+            onChange={(e) => setInService(e.target.checked)}
+          />
+          <label htmlFor="inService" style={{ fontWeight: 500, color: 'var(--primary-color)' }}>Already in service from {companyName || 'company'}?</label>
         </div>
 
         <button type="submit" disabled={isLoading} style={{ marginTop: '1rem' }}>

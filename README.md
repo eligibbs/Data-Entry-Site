@@ -2,6 +2,8 @@
 
 This is a data entry application for Recovery and Detox Units.
 
+Currently, it has a member list with optional self-registration, and activity attendance.
+
 ## Tech Stack
 - **Frontend**: React, Vite, TypeScript
 - **Backend**: Express, Node.js
@@ -22,7 +24,13 @@ This is a data entry application for Recovery and Detox Units.
     npm install
     ```
 
-2.  **Initialize Database**
+3. **Configuring**
+
+
+   Copy `.env.example` to `.env` and change the options listed
+
+
+4. **Initialize Database**
     ```bash
     npx prisma migrate dev --name init
     ```

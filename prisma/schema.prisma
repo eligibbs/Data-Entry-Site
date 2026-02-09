@@ -12,6 +12,8 @@ model Member {
   name        String
   phoneNumber String
   dateOfBirth String
+  county      String?
+  inService   Boolean?     @default(false)
   attendances Attendance[]
 }
 
